@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plate Week – meal tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<style>
+:root{--bg:#f1f4ef;--panel:#fff;--ink:#1c2b2a;--muted:#5e6f6c;--line:#d9e0da;--accent:#0e6b5c;--accent-ink:#fff;--danger:#b3372f;
+--home:#2f8f5b;--restaurant:#d0842c;--takeout:#7a5bb5;--delivery:#2b78b8;--other:#8a8f8d}
+@media (prefers-color-scheme:dark){:root{--bg:#121a19;--panel:#1b2726;--ink:#e8efec;--muted:#93a6a2;--line:#2c3c3a;--accent:#48c2a9;--accent-ink:#0b1614;--danger:#ff8a80}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Bricolage Grotesque",system-ui,sans-serif}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.wrap{max-width:860px;margin:0 auto;padding:20px 16px 60px}
+header.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+h1{font-size:1.5rem;font-weight:800;margin:0;letter-spacing:-.02em}
+h2{font-size:1.1rem;margin:0 0 12px}
+.btn{background:var(--accent);color:var(--accent-ink);border:0;border-radius:8px;padding:10px 16px;font-weight:600}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.btn.small{padding:6px 10px;font-size:.9rem}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:16px}
+label{display:block;font-size:.85rem;color:var(--muted);margin-bottom:4px}
+input,select{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px}
+.auth{max-width:380px;margin:12vh auto 0}
+.auth h1{font-size:2.2rem;margin-bottom:4px}
+.auth form>*{margin-bottom:12px}
+.msg{font-size:.9rem;min-height:1.3em}
+.msg.err{color:var(--danger)}
+.weeknav{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+.weeknav strong{flex:1;text-align:center;font-size:1.05rem}
+.totals{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:14px}
+.stat b{display:block;font-size:1.7rem;font-weight:800;letter-spacing:-.02em}
+.stat span{color:var(--muted);font-size:.85rem}
+.split{display:flex;height:14px;border-radius:7px;overflow:hidden;background:var(--line);margin:8px 0}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:.85rem;color:var(--muted)}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px}
+.day h3{font-size:1rem;margin:0 0 8px;display:flex;justify-content:space-between}
+.day h3 span{color:var(--muted);font-weight:400;font-size:.9rem}
+.meal{display:flex;gap:12px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.meal .info{flex:1;min-width:0}
+.meal .info b{display:block;overflow-wrap:anywhere}
+.meal .info small{color:var(--muted)}
+.tag{font-size:.75rem;padding:2px 8px;border-radius:99px;color:#fff;white-space:nowrap}
+.cost{font-weight:600;min-width:56px;text-align:right}
+.del{background:none;border:0;color:var(--muted);font-size:1.2rem;padding:4px 8px}
+.del:hover{color:var(--danger)}
+.empty{color:var(--muted);padding:8px 0 0;border-top:1px solid var(--line);font-size:.9rem}
+.hidden{display:none}
+form.add .grid{margin-bottom:12px}
+.lookup{border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:12px;background:var(--bg)}
+.lookup .row{display:flex;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
+.lookup .row:first-of-type{border-top:0}
+.lookup .row .info{flex:1;min-width:0;overflow-wrap:anywhere}
+.lookup small{color:var(--muted)}
+.lookup h4{margin:10px 0 2px;font-size:.9rem}
+.note{font-size:.85rem;color:var(--muted);margin:0 0 12px}
+</style>
+</head>
+<body>
+
+<!-- Sign in / register -->
+<main id="authView" class="wrap auth hidden">
+  <h1>Plate Week</h1>
+  <p style="color:var(--muted);margin-top:0">Log what you eat, what it costs, and where it came from.</p>
+  <form id="authForm" class="panel">
+    <div><label for="email">Email</label><input id="email" type="email" autocomplete="email" required></div>
+    <div><label for="password">Password (6+ characters)</label><input id="password" type="password" minlength="6" autocomplete="current-password" required></div>
+    <button class="btn" id="authSubmit" style="width:100%">Log in</button>
+    <p class="msg" id="authMsg" role="status"></p>
+    <button type="button" class="btn ghost" id="authToggle" style="width:100%">Create an account</button>
+  </form>
+</main>
+
+<!-- Main app -->
+<div id="appView" class="wrap hidden">
+  <header class="top">
+    <h1>Plate Week</h1>
+    <div><small id="who" style="color:var(--muted);margin-right:8px"></small><button class="btn ghost small" id="logout">Log out</button></div>
+  </header>
+
+  <div class="weeknav">
+    <button class="btn ghost small" id="prev" aria-label="Previous week">&larr;</button>
+    <strong id="weekLabel"></strong>
+    <button class="btn ghost small" id="next" aria-label="Next week">&rarr;</button>
+    <button class="btn ghost small" id="today">This week</button>
+  </div>
+
+  <section class="panel" aria-label="Weekly summary">
+    <div class="totals" id="totals"></div>
+    <div class="split" id="split"></div>
+    <div class="legend" id="legend"></div>
+  </section>
+
+  <section class="panel">
+    <h2>Add a meal</h2>
+    <form id="mealForm" class="add">
+      <div class="grid">
+        <div style="grid-column:span 2"><label for="name">Meal</label><input id="name" required placeholder="Chicken burrito bowl"></div>
+        <div><label for="grams">Portion (g)</label><input id="grams" type="number" min="1" step="1" value="100"></div>
+        <div style="align-self:end"><button type="button" class="btn ghost" id="lookupBtn" style="width:100%">Look up nutrition</button></div>
+        <div><label for="date">Date</label><input id="date" type="date" required></div>
+        <div><label for="type">Meal type</label><select id="type"><option value="breakfast">Breakfast</option><option value="lunch">Lunch</option><option value="dinner" selected>Dinner</option><option value="snack">Snack</option></select></div>
+        <div><label for="source">Source</label><select id="source"><option value="home">Cooked at home</option><option value="restaurant">Restaurant</option><option value="takeout">Takeout</option><option value="delivery">Delivery</option><option value="other">Other</option></select></div>
+        <div><label for="cost">Cost ($)</label><input id="cost" type="number" min="0" step="0.01" value="0"></div>
+        <div><label for="cal">Calories</label><input id="cal" type="number" min="0" step="1" value="0"></div>
+        <div><label for="pro">Protein (g)</label><input id="pro" type="number" min="0" step="0.1" value="0"></div>
+        <div><label for="carb">Carbs (g)</label><input id="carb" type="number" min="0" step="0.1" value="0"></div>
+        <div><label for="fat">Fat (g)</label><input id="fat" type="number" min="0" step="0.1" value="0"></div>
+      </div>
+      <div id="lookup" class="lookup hidden" aria-live="polite"></div>
+      <p class="note">Nutrition lookup fills calories and macros from the food name and portion. Cost is always entered by hand.</p>
+      <button class="btn">Add meal</button>
+      <span class="msg" id="mealMsg" role="status"></span>
+    </form>
+  </section>
+
+  <section id="days" aria-label="Meals by day"></section>
+</div>
+
+<script>
+// ====== 1. Paste your Supabase project values here (Project Settings > API) ======
+const SUPABASE_URL = "https://bvghphquonyiuvfbiffl.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ2Z2hwaHF1b255aXV2ZmJpZmZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAyNzA4ODMsImV4cCI6MjEwNTg0Njg4M30.-Z0DwKw0MvcxUr0ozaCEJnKSKiMe2qgobwGt9b96lDU";
+// ====== 2. USDA FoodData Central key (free: fdc.nal.usda.gov/api-key-signup) ======
+// "DEMO_KEY" works for testing but is heavily rate limited. Use your own key for real use.
+const USDA_API_KEY = "FfOb8BVVb4n8TQjnisJSuURuUEQF6nwM4xGDpSiC";
+// =================================================================================
+
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const $ = id => document.getElementById(id);
+const SOURCES = {home:"Cooked at home",restaurant:"Restaurant",takeout:"Takeout",delivery:"Delivery",other:"Other"};
+const money = n => "$" + Number(n).toFixed(2);
+const pad = n => String(n).padStart(2, "0");
+const iso = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate()) }`;
+const parse = s => { const [y,m,d] = s.split("-").map(Number); return new Date(y, m-1, d); };
+const mondayOf = d => { const x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; };
+
+let weekStart = mondayOf(new Date());
+let signup = false;
+let user = null;
+
+// ---------- Auth ----------
+function setMsg(el, text, err) { el.textContent = text || ""; el.classList.toggle("err", !!err); }
+
+$("authToggle").onclick = () => {
+  signup = !signup;
+  $("authSubmit").textContent = signup ? "Create account" : "Log in";
+  $("authToggle").textContent = signup ? "I already have an account" : "Create an account";
+  $("password").autocomplete = signup ? "new-password" : "current-password";
+  setMsg($("authMsg"), "");
+};
+
+$("authForm").onsubmit = async e => {
+  e.preventDefault();
+  setMsg($("authMsg"), "One moment…");
+  const creds = { email: $("email").value.trim(), password: $("password").value };
+  const { data, error } = signup ? await sb.auth.signUp(creds) : await sb.auth.signInWithPassword(creds);
+  if (error) return setMsg($("authMsg"), error.message, true);
+  if (signup && !data.session) setMsg($("authMsg"), "Check your email to confirm your account, then log in.");
+  else setMsg($("authMsg"), "");
+};
+
+$("logout").onclick = () => sb.auth.signOut();
+
+sb.auth.onAuthStateChange((_evt, session) => {
+  user = session ? session.user : null;
+  $("authView").classList.toggle("hidden", !!user);
+  $("appView").classList.toggle("hidden", !user);
+  if (user) { $("who").textContent = user.email; $("date").value = iso(new Date()); load(); }
+  else { $("days").innerHTML = ""; }
+});
+
+// ---------- Week navigation ----------
+const shift = n => { weekStart.setDate(weekStart.getDate() + n); load(); };
+$("prev").onclick = () => shift(-7);
+$("next").onclick = () => shift(7);
+$("today").onclick = () => { weekStart = mondayOf(new Date()); load(); };
+
+// ---------- Data ----------
+let meals = [];
+
+async function load() {
+  const end = new Date(weekStart); end.setDate(end.getDate() + 6);
+  const fmt = { month: "short", day: "numeric" };
+  $("weekLabel").textContent = `${weekStart.toLocaleDateString(undefined, fmt)} – ${end.toLocaleDateString(undefined, {...fmt, year: "numeric"})}`;
+  const { data, error } = await sb.from("meals").select("*")
+    .gte("eaten_on", iso(weekStart)).lte("eaten_on", iso(end))
+    .order("eaten_on").order("created_at");
+  if (error) { $("days").innerHTML = `<p class="msg err">Couldn't load meals: ${esc(error.message)}</p>`; return; }
+  meals = data;
+  render();
+}
+
+$("mealForm").onsubmit = async e => {
+  e.preventDefault();
+  setMsg($("mealMsg"), "Saving…");
+  const row = {
+    user_id: user.id,
+    name: $("name").value.trim(), eaten_on: $("date").value, meal_type: $("type").value, source: $("source").value,
+    cost: +$("cost").value || 0, calories: Math.round(+$("cal").value || 0),
+    protein: +$("pro").value || 0, carbs: +$("carb").value || 0, fat: +$("fat").value || 0
+  };
+  console.log("inserting as", user?.id, row);
+  const { error } = await sb.from("meals").insert(row);
+  if (error) return setMsg($("mealMsg"), error.message, true);
+  setMsg($("mealMsg"), "Meal added");
+  $("name").value = "";
+  $("lookup").classList.add("hidden");
+  // jump to the week containing the new meal
+  weekStart = mondayOf(parse(row.eaten_on));
+  load();
+};
+
+// ---------- Nutrition lookup (USDA FoodData Central + Open Food Facts) ----------
+let found = [];
+
+async function searchUSDA(q) {
+  const types = ["Foundation", "SR Legacy", "Survey (FNDDS)"].map(encodeURIComponent).join(",");
+  const url = `https://api.nal.usda.gov/fdc/v1/foods/search?query=${encodeURIComponent(q)}&pageSize=5&dataType=${types}&api_key=${encodeURIComponent(USDA_API_KEY)}`;
+  let r;
+  try { r = await fetch(url); }
+  catch (e) { throw new Error("USDA couldn't be reached (network or extension blocking it)."); }
+  if (!r.ok) {
+    if (r.status === 429) throw new Error("USDA rate limit reached (HTTP 429). Add your own free API key.");
+    if (r.status === 403) throw new Error("USDA rejected the API key (HTTP 403). Check USDA_API_KEY for typos.");
+    throw new Error(`USDA search failed (HTTP ${r.status}).`);
+  }
+  const j = await r.json();
+  const n = (f, id) => { const x = (f.foodNutrients || []).find(v => v.nutrientId === id); return x ? Number(x.value) : 0; };
+  return (j.foods || []).map(f => ({
+    src: "USDA", name: f.description, brand: f.dataType,
+    cal: n(f, 1008), pro: n(f, 1003), carb: n(f, 1005), fat: n(f, 1004)   // per 100 g
+  }));
+}
+
+async function searchOFF(q) {
+  const p = new URLSearchParams({ search_terms: q, search_simple: 1, action: "process", json: 1,
+    page_size: 5, fields: "product_name,brands,nutriments" });
+  const r = await fetch("https://world.openfoodfacts.org/cgi/search.pl?" + p);
+  if (!r.ok) throw new Error("Open Food Facts search failed");
+  const j = await r.json();
+  return (j.products || []).filter(x => x.product_name && x.nutriments).map(x => ({
+    src: "Open Food Facts", name: x.product_name, brand: x.brands || "",
+    cal: +x.nutriments["energy-kcal_100g"] || 0, pro: +x.nutriments.proteins_100g || 0,
+    carb: +x.nutriments.carbohydrates_100g || 0, fat: +x.nutriments.fat_100g || 0
+  }));
+}
+
+$("lookupBtn").onclick = async () => {
+  const q = $("name").value.trim(), box = $("lookup");
+  box.classList.remove("hidden");
+  if (!q) { box.innerHTML = "<small>Type a food name first, like “grilled chicken breast”.</small>"; return; }
+  box.innerHTML = "<small>Searching…</small>";
+  const [u, o] = await Promise.allSettled([searchUSDA(q), searchOFF(q)]);
+  found = [];
+  let html = "";
+  [["Generic foods (USDA)", u], ["Packaged products (Open Food Facts)", o]].forEach(([title, res]) => {
+    html += `<h4>${title}</h4>`;
+    if (res.status === "rejected") { html += `<small>${esc(res.reason.message)}</small>`; return; }
+    if (!res.value.length) { html += "<small>No matches.</small>"; return; }
+    res.value.forEach(f => {
+      const i = found.push(f) - 1;
+      html += `<div class="row"><div class="info"><b>${esc(f.name)}</b><br><small>${esc(f.brand)}${f.brand ? " · " : ""}per 100 g: ${Math.round(f.cal)} cal, P${f.pro.toFixed(1)} C${f.carb.toFixed(1)} F${f.fat.toFixed(1)}</small></div>
+        <button type="button" class="btn small" data-i="${i}">Use</button></div>`;
+    });
+  });
+  box.innerHTML = html;
+  box.querySelectorAll("button[data-i]").forEach(b => b.onclick = () => applyFood(found[b.dataset.i]));
+};
+
+function applyFood(f) {
+  const g = (+$("grams").value || 100) / 100;
+  $("cal").value = Math.round(f.cal * g);
+  $("pro").value = +(f.pro * g).toFixed(1);
+  $("carb").value = +(f.carb * g).toFixed(1);
+  $("fat").value = +(f.fat * g).toFixed(1);
+  $("lookup").innerHTML = `<small>Filled from ${esc(f.src)}: ${esc(f.name)}, scaled to ${$("grams").value || 100} g. You can still edit any number. To combine several foods, look each one up and add the numbers together.</small>`;
+}
+
+async function removeMeal(id) {
+  const { error } = await sb.from("meals").delete().eq("id", id);
+  if (error) return alert("Couldn't delete: " + error.message);
+  load();
+}
+
+// ---------- Rendering ----------
+function esc(s) { const d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
+
+function render() {
+  const sum = k => meals.reduce((a, m) => a + Number(m[k]), 0);
+  const total = sum("cost"), cal = sum("calories");
+  const daysLogged = new Set(meals.map(m => m.eaten_on)).size;
+  $("totals").innerHTML = [
+    [money(total), "spent this week"],
+    [meals.length, "meals logged"],
+    [daysLogged ? Math.round(cal / daysLogged).toLocaleString() : 0, "avg calories per logged day"],
+    [`${Math.round(sum("protein"))} / ${Math.round(sum("carbs"))} / ${Math.round(sum("fat"))}`, "protein / carbs / fat (g)"]
+  ].map(([v, l]) => `<div class="stat"><b>${v}</b><span>${l}</span></div>`).join("");
+
+  // spend + count by source
+  const by = {};
+  meals.forEach(m => { by[m.source] = by[m.source] || { cost: 0, n: 0 }; by[m.source].cost += Number(m.cost); by[m.source].n++; });
+  const keys = Object.keys(by);
+  const basis = total > 0 ? "cost" : "n", denom = total > 0 ? total : meals.length;
+  $("split").innerHTML = keys.map(k => `<div title="${SOURCES[k]}" style="width:${by[k][basis] / denom * 100}%;background:var(--${k})"></div>`).join("");
+  $("legend").innerHTML = keys.length
+    ? keys.map(k => `<span><i class="dot" style="background:var(--${k})"></i>${SOURCES[k]}: ${by[k].n} meal${by[k].n > 1 ? "s" : ""}, ${money(by[k].cost)}</span>`).join("")
+    : "<span>Add a meal to see where your money and meals come from.</span>";
+
+  // days
+  let html = "";
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(weekStart); d.setDate(d.getDate() + i);
+    const key = iso(d), list = meals.filter(m => m.eaten_on === key);
+    const dayCost = list.reduce((a, m) => a + Number(m.cost), 0), dayCal = list.reduce((a, m) => a + m.calories, 0);
+    html += `<div class="panel day"><h3>${d.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" })}
+      <span>${list.length ? `${money(dayCost)} · ${dayCal} cal` : ""}</span></h3>` +
+      (list.length ? list.map(m => `<div class="meal">
+        <div class="info"><b>${esc(m.name)}</b><small>${m.meal_type} · ${m.calories} cal · P${+m.protein} C${+m.carbs} F${+m.fat}</small></div>
+        <span class="tag" style="background:var(--${m.source})">${SOURCES[m.source]}</span>
+        <span class="cost">${money(m.cost)}</span>
+        <button class="del" data-id="${m.id}" aria-label="Delete ${esc(m.name)}">&times;</button></div>`).join("")
+        : `<div class="empty">Nothing logged yet.</div>`) + `</div>`;
+  }
+  $("days").innerHTML = html;
+  $("days").querySelectorAll(".del").forEach(b => b.onclick = () => confirm("Delete this meal?") && removeMeal(b.dataset.id));
+}
+</script>
+</body>
+</html>
