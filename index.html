@@ -61,6 +61,25 @@ form.add .grid{margin-bottom:12px}
 .lookup small{color:var(--muted)}
 .lookup h4{margin:10px 0 2px;font-size:.9rem}
 .note{font-size:.85rem;color:var(--muted);margin:0 0 12px}
+.layout{display:grid;grid-template-columns:1fr;gap:16px}
+@media (min-width:820px){.layout{grid-template-columns:260px 1fr}.layout .sidebar{order:0}.layout .content{order:1}}
+.cal h4{margin:0 0 10px;text-align:center;font-size:.95rem}
+.cal .nav{display:flex;align-items:center;margin-bottom:8px}
+.cal .nav strong{flex:1;text-align:center;font-size:.9rem}
+.cal table{width:100%;border-collapse:collapse}
+.cal th{font-size:.7rem;color:var(--muted);font-weight:600;padding-bottom:4px}
+.cal td{text-align:center;padding:2px}
+.cal button{width:100%;aspect-ratio:1;border:0;border-radius:8px;background:none;font-size:.85rem;color:var(--ink)}
+.cal button:hover{background:var(--line)}
+.cal button.today{font-weight:800;color:var(--accent)}
+.cal button.in-week{background:var(--line)}
+.cal button.empty{visibility:hidden;cursor:default}
+.breakdown{display:grid;grid-template-columns:1fr;gap:20px;margin-top:14px}
+@media (min-width:600px){.breakdown{grid-template-columns:1fr 1fr}}
+.breakdown h4{margin:0 0 8px;font-size:.85rem;color:var(--muted);font-weight:600}
+.donutRow{display:flex;align-items:center;gap:16px}
+.donutRow svg{flex:none}
+.donutRow .legend{flex-direction:column;gap:6px;font-size:.85rem}
 </style>
 </head>
 <body>
@@ -85,43 +104,73 @@ form.add .grid{margin-bottom:12px}
     <div><small id="who" style="color:var(--muted);margin-right:8px"></small><button class="btn ghost small" id="logout">Log out</button></div>
   </header>
 
-  <div class="weeknav">
-    <button class="btn ghost small" id="prev" aria-label="Previous week">&larr;</button>
-    <strong id="weekLabel"></strong>
-    <button class="btn ghost small" id="next" aria-label="Next week">&rarr;</button>
-    <button class="btn ghost small" id="today">This week</button>
-  </div>
-
-  <section class="panel" aria-label="Weekly summary">
-    <div class="totals" id="totals"></div>
-    <div class="split" id="split"></div>
-    <div class="legend" id="legend"></div>
-  </section>
-
-  <section class="panel">
-    <h2>Add a meal</h2>
-    <form id="mealForm" class="add">
-      <div class="grid">
-        <div style="grid-column:span 2"><label for="name">Meal</label><input id="name" required placeholder="Chicken burrito bowl"></div>
-        <div><label for="grams">Portion (g)</label><input id="grams" type="number" min="1" step="1" value="100"></div>
-        <div style="align-self:end"><button type="button" class="btn ghost" id="lookupBtn" style="width:100%">Look up nutrition</button></div>
-        <div><label for="date">Date</label><input id="date" type="date" required></div>
-        <div><label for="type">Meal type</label><select id="type"><option value="breakfast">Breakfast</option><option value="lunch">Lunch</option><option value="dinner" selected>Dinner</option><option value="snack">Snack</option></select></div>
-        <div><label for="source">Source</label><select id="source"><option value="home">Cooked at home</option><option value="restaurant">Restaurant</option><option value="takeout">Takeout</option><option value="delivery">Delivery</option><option value="other">Other</option></select></div>
-        <div><label for="cost">Cost ($)</label><input id="cost" type="number" min="0" step="0.01" value="0"></div>
-        <div><label for="cal">Calories</label><input id="cal" type="number" min="0" step="1" value="0"></div>
-        <div><label for="pro">Protein (g)</label><input id="pro" type="number" min="0" step="0.1" value="0"></div>
-        <div><label for="carb">Carbs (g)</label><input id="carb" type="number" min="0" step="0.1" value="0"></div>
-        <div><label for="fat">Fat (g)</label><input id="fat" type="number" min="0" step="0.1" value="0"></div>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="panel cal">
+        <div class="nav">
+          <button type="button" class="btn ghost small" id="calPrev" aria-label="Previous month">&larr;</button>
+          <strong id="calLabel"></strong>
+          <button type="button" class="btn ghost small" id="calNext" aria-label="Next month">&rarr;</button>
+        </div>
+        <table id="calGrid" aria-label="Calendar"></table>
       </div>
-      <div id="lookup" class="lookup hidden" aria-live="polite"></div>
-      <p class="note">Nutrition lookup fills calories and macros from the food name and portion. Cost is always entered by hand.</p>
-      <button class="btn">Add meal</button>
-      <span class="msg" id="mealMsg" role="status"></span>
-    </form>
-  </section>
+    </aside>
 
-  <section id="days" aria-label="Meals by day"></section>
+    <div class="content">
+      <div class="weeknav">
+        <button class="btn ghost small" id="prev" aria-label="Previous week">&larr;</button>
+        <strong id="weekLabel"></strong>
+        <button class="btn ghost small" id="next" aria-label="Next week">&rarr;</button>
+        <button class="btn ghost small" id="today">This week</button>
+      </div>
+
+      <section class="panel" aria-label="Weekly summary">
+        <div class="totals" id="totals"></div>
+        <div class="breakdown">
+          <div>
+            <h4>Where meals came from</h4>
+            <div class="split" id="split"></div>
+            <div class="legend" id="legend"></div>
+          </div>
+          <div>
+            <h4>Macros this week</h4>
+            <div class="donutRow">
+              <div id="macroDonut"></div>
+              <div class="legend" id="macroLegend"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Add a meal</h2>
+        <form id="mealForm" class="add">
+          <div class="grid">
+            <div style="grid-column:span 2"><label for="name">Meal</label><input id="name" required placeholder="Chicken burrito bowl"></div>
+            <div><label for="portionType">Portion by</label><select id="portionType"><option value="grams">Grams (exact)</option><option value="count">Portions (estimate)</option></select></div>
+            <div><label for="amount" id="amountLabel">Grams</label><input id="amount" type="number" min="0" step="any" value="100"></div>
+            <input type="hidden" id="gramsPerPortion" value="100">
+            <div style="align-self:end"><button type="button" class="btn ghost" id="lookupBtn" style="width:100%">Look up nutrition</button></div>
+            <div><label for="date">Date</label><input id="date" type="date" required></div>
+            <div><label for="type">Meal type</label><select id="type"><option value="breakfast">Breakfast</option><option value="lunch">Lunch</option><option value="dinner" selected>Dinner</option><option value="snack">Snack</option></select></div>
+            <div><label for="source">Source</label><select id="source"><option value="home">Cooked at home</option><option value="restaurant">Restaurant</option><option value="takeout">Takeout</option><option value="delivery">Delivery</option><option value="other">Other</option></select></div>
+            <div><label for="cost">Cost ($)</label><input id="cost" type="number" min="0" step="0.01" value="0"></div>
+            <div><label for="cal">Calories</label><input id="cal" type="number" min="0" step="1" value="0"></div>
+            <div><label for="pro">Protein (g)</label><input id="pro" type="number" min="0" step="0.1" value="0"></div>
+            <div><label for="carb">Carbs (g)</label><input id="carb" type="number" min="0" step="0.1" value="0"></div>
+            <div><label for="fat">Fat (g)</label><input id="fat" type="number" min="0" step="0.1" value="0"></div>
+          </div>
+          <div id="lookup" class="lookup hidden" aria-live="polite"></div>
+          <p class="note">Nutrition lookup fills calories and macros from the food name and portion. Cost is always entered by hand.</p>
+          <button class="btn" id="submitBtn">Add meal</button>
+          <button type="button" class="btn ghost hidden" id="cancelEdit">Cancel edit</button>
+          <span class="msg" id="mealMsg" role="status"></span>
+        </form>
+      </section>
+
+      <section id="days" aria-label="Meals by day"></section>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -173,15 +222,15 @@ sb.auth.onAuthStateChange((_evt, session) => {
   user = session ? session.user : null;
   $("authView").classList.toggle("hidden", !!user);
   $("appView").classList.toggle("hidden", !user);
-  if (user) { $("who").textContent = user.email; $("date").value = iso(new Date()); load(); }
+  if (user) { $("who").textContent = user.email; $("date").value = iso(new Date()); load(); renderCalendar(); }
   else { $("days").innerHTML = ""; }
 });
 
 // ---------- Week navigation ----------
-const shift = n => { weekStart.setDate(weekStart.getDate() + n); load(); };
+const shift = n => { weekStart.setDate(weekStart.getDate() + n); load(); renderCalendar(); };
 $("prev").onclick = () => shift(-7);
 $("next").onclick = () => shift(7);
-$("today").onclick = () => { weekStart = mondayOf(new Date()); load(); };
+$("today").onclick = () => { weekStart = mondayOf(new Date()); calMonth = new Date(weekStart.getFullYear(), weekStart.getMonth(), 1); load(); renderCalendar(); };
 
 // ---------- Data ----------
 let meals = [];
@@ -198,26 +247,29 @@ async function load() {
   render();
 }
 
+$("cancelEdit").onclick = stopEdit;
+
 $("mealForm").onsubmit = async e => {
   e.preventDefault();
-  setMsg($("mealMsg"), "Saving…");
+  setMsg($("mealMsg"), editingId ? "Saving changes…" : "Saving…");
   const row = {
     user_id: user.id,
     name: $("name").value.trim(), eaten_on: $("date").value, meal_type: $("type").value, source: $("source").value,
     cost: +$("cost").value || 0, calories: Math.round(+$("cal").value || 0),
     protein: +$("pro").value || 0, carbs: +$("carb").value || 0, fat: +$("fat").value || 0
   };
-  console.log("inserting as", user?.id, row);
-  const { error } = await sb.from("meals").insert(row);
+  const { error } = editingId
+    ? await sb.from("meals").update(row).eq("id", editingId)
+    : await sb.from("meals").insert(row);
   if (error) return setMsg($("mealMsg"), error.message, true);
-  setMsg($("mealMsg"), "Meal added");
-  $("name").value = "";
+  const wasEdit = !!editingId;
+  stopEdit();
+  setMsg($("mealMsg"), wasEdit ? "Meal updated" : "Meal added");
   $("lookup").classList.add("hidden");
-  // jump to the week containing the new meal
+  // jump to the week containing the saved meal
   weekStart = mondayOf(parse(row.eaten_on));
   load();
 };
-
 // ---------- Nutrition lookup (USDA FoodData Central + Open Food Facts) ----------
 let found = [];
 
@@ -242,15 +294,20 @@ async function searchUSDA(q) {
 
 async function searchOFF(q) {
   const p = new URLSearchParams({ search_terms: q, search_simple: 1, action: "process", json: 1,
-    page_size: 5, fields: "product_name,brands,nutriments" });
+    page_size: 5, fields: "product_name,brands,nutriments,serving_size,serving_quantity" });
   const r = await fetch("https://world.openfoodfacts.org/cgi/search.pl?" + p);
   if (!r.ok) throw new Error("Open Food Facts search failed");
   const j = await r.json();
-  return (j.products || []).filter(x => x.product_name && x.nutriments).map(x => ({
-    src: "Open Food Facts", name: x.product_name, brand: x.brands || "",
-    cal: +x.nutriments["energy-kcal_100g"] || 0, pro: +x.nutriments.proteins_100g || 0,
-    carb: +x.nutriments.carbohydrates_100g || 0, fat: +x.nutriments.fat_100g || 0
-  }));
+  return (j.products || []).filter(x => x.product_name && x.nutriments).map(x => {
+    let servingG = null;
+    if (x.serving_quantity && !isNaN(+x.serving_quantity)) servingG = +x.serving_quantity;
+    else if (x.serving_size) { const m = /([\d.]+)\s*g\b/i.exec(x.serving_size); if (m) servingG = +m[1]; }
+    return {
+      src: "Open Food Facts", name: x.product_name, brand: x.brands || "", servingG,
+      cal: +x.nutriments["energy-kcal_100g"] || 0, pro: +x.nutriments.proteins_100g || 0,
+      carb: +x.nutriments.carbohydrates_100g || 0, fat: +x.nutriments.fat_100g || 0
+    };
+  });
 }
 
 $("lookupBtn").onclick = async () => {
@@ -275,14 +332,92 @@ $("lookupBtn").onclick = async () => {
   box.querySelectorAll("button[data-i]").forEach(b => b.onclick = () => applyFood(found[b.dataset.i]));
 };
 
+$("portionType").onchange = () => {
+  const isCount = $("portionType").value === "count";
+  $("amountLabel").textContent = isCount ? "Portions (e.g. 1, 1.5, 2)" : "Grams";
+  $("amount").value = isCount ? 1 : 100;
+};
+
+function computeGrams() {
+  const amt = +$("amount").value || 0;
+  return $("portionType").value === "count" ? amt * (+$("gramsPerPortion").value || 100) : amt;
+}
+
 function applyFood(f) {
-  const g = (+$("grams").value || 100) / 100;
+  if ($("portionType").value === "count" && f.servingG) $("gramsPerPortion").value = f.servingG;
+  const g = computeGrams() / 100;
   $("cal").value = Math.round(f.cal * g);
   $("pro").value = +(f.pro * g).toFixed(1);
   $("carb").value = +(f.carb * g).toFixed(1);
   $("fat").value = +(f.fat * g).toFixed(1);
-  $("lookup").innerHTML = `<small>Filled from ${esc(f.src)}: ${esc(f.name)}, scaled to ${$("grams").value || 100} g. You can still edit any number. To combine several foods, look each one up and add the numbers together.</small>`;
+  const desc = $("portionType").value === "count"
+    ? `about ${$("amount").value || 1} portion(s), estimated`
+    : `${$("amount").value || 100} g`;
+  $("lookup").innerHTML = `<small>Filled from ${esc(f.src)}: ${esc(f.name)}, scaled to ${desc}. You can still edit any number. To combine several foods, look each one up and add the numbers together.</small>`;
 }
+
+// ---------- Macro donut chart ----------
+function donutSVG(parts, total) {
+  const size = 120, r = 44, sw = 18, c = size / 2;
+  if (!total) return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="var(--line)" stroke-width="${sw}"/></svg>`;
+  const circ = 2 * Math.PI * r;
+  let offset = 0, circles = "";
+  parts.forEach(p => {
+    const dash = (p.val / total) * circ;
+    if (dash > 0) circles += `<circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="${p.color}" stroke-width="${sw}" stroke-dasharray="${dash} ${circ - dash}" stroke-dashoffset="${-offset}" transform="rotate(-90 ${c} ${c})"/>`;
+    offset += dash;
+  });
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${circles}</svg>`;
+}
+
+// ---------- Sidebar calendar ----------
+let calMonth = new Date(); calMonth.setDate(1);
+
+function renderCalendar() {
+  $("calLabel").textContent = calMonth.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+  const today = iso(new Date());
+  const weekEnd = new Date(weekStart); weekEnd.setDate(weekEnd.getDate() + 6);
+  const firstDow = (calMonth.getDay() + 6) % 7; // Monday-first offset
+  const daysInMonth = new Date(calMonth.getFullYear(), calMonth.getMonth() + 1, 0).getDate();
+
+  let cells = "";
+  for (let i = 0; i < firstDow; i++) cells += `<td><button class="empty" tabindex="-1"></button></td>`;
+  for (let d = 1; d <= daysInMonth; d++) {
+    const date = new Date(calMonth.getFullYear(), calMonth.getMonth(), d);
+    const key = iso(date);
+    const cls = [key === today ? "today" : "", date >= weekStart && date <= weekEnd ? "in-week" : ""].filter(Boolean).join(" ");
+    cells += `<td><button class="${cls}" data-date="${key}" aria-label="${date.toDateString()}">${d}</button></td>`;
+  }
+  const trailing = (7 - ((firstDow + daysInMonth) % 7)) % 7;
+  for (let i = 0; i < trailing; i++) cells += `<td><button class="empty" tabindex="-1"></button></td>`;
+
+  const rows = [];
+  const allCells = cells.match(/<td>.*?<\/td>/g) || [];
+  for (let i = 0; i < allCells.length; i += 7) rows.push(`<tr>${allCells.slice(i, i + 7).join("")}</tr>`);
+
+  $("calGrid").innerHTML = `<thead><tr>${["M","T","W","T","F","S","S"].map(d => `<th>${d}</th>`).join("")}</tr></thead><tbody>${rows.join("")}</tbody>`;
+  $("calGrid").querySelectorAll("button[data-date]").forEach(b => b.onclick = () => jumpToDate(b.dataset.date));
+}
+
+function jumpToDate(key) {
+  const date = parse(key);
+  weekStart = mondayOf(date);
+  calMonth = new Date(date.getFullYear(), date.getMonth(), 1);
+  load();
+  renderCalendar();
+  // scroll to and briefly highlight the chosen day, once it's rendered
+  requestAnimationFrame(() => {
+    const el = $("day-" + key);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "start" });
+    el.style.outline = "3px solid var(--accent)";
+    setTimeout(() => { el.style.outline = ""; }, 1500);
+  });
+}
+
+$("calPrev").onclick = () => { calMonth.setMonth(calMonth.getMonth() - 1); renderCalendar(); };
+$("calNext").onclick = () => { calMonth.setMonth(calMonth.getMonth() + 1); renderCalendar(); };
+renderCalendar();
 
 async function removeMeal(id) {
   const { error } = await sb.from("meals").delete().eq("id", id);
@@ -300,9 +435,20 @@ function render() {
   $("totals").innerHTML = [
     [money(total), "spent this week"],
     [meals.length, "meals logged"],
-    [daysLogged ? Math.round(cal / daysLogged).toLocaleString() : 0, "avg calories per logged day"],
-    [`${Math.round(sum("protein"))} / ${Math.round(sum("carbs"))} / ${Math.round(sum("fat"))}`, "protein / carbs / fat (g)"]
+    [daysLogged ? Math.round(cal / daysLogged).toLocaleString() : 0, "avg calories per logged day"]
   ].map(([v, l]) => `<div class="stat"><b>${v}</b><span>${l}</span></div>`).join("");
+
+  // macro donut (protein / carbs / fat, by grams)
+  const macroParts = [
+    { label: "Protein", val: sum("protein"), color: "#d1495b" },
+    { label: "Carbs", val: sum("carbs"), color: "#edae49" },
+    { label: "Fat", val: sum("fat"), color: "#2e86ab" }
+  ];
+  const macroTotal = macroParts.reduce((a, p) => a + p.val, 0);
+  $("macroDonut").innerHTML = donutSVG(macroParts, macroTotal);
+  $("macroLegend").innerHTML = macroTotal
+    ? macroParts.map(p => `<span><i class="dot" style="background:${p.color}"></i>${p.label}: ${Math.round(p.val)}g (${Math.round(p.val / macroTotal * 100)}%)</span>`).join("")
+    : "<span>Log a meal to see your macro split.</span>";
 
   // spend + count by source
   const by = {};
@@ -320,18 +466,51 @@ function render() {
     const d = new Date(weekStart); d.setDate(d.getDate() + i);
     const key = iso(d), list = meals.filter(m => m.eaten_on === key);
     const dayCost = list.reduce((a, m) => a + Number(m.cost), 0), dayCal = list.reduce((a, m) => a + m.calories, 0);
-    html += `<div class="panel day"><h3>${d.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" })}
+    html += `<div class="panel day" id="day-${key}"><h3>${d.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" })}
       <span>${list.length ? `${money(dayCost)} · ${dayCal} cal` : ""}</span></h3>` +
       (list.length ? list.map(m => `<div class="meal">
         <div class="info"><b>${esc(m.name)}</b><small>${m.meal_type} · ${m.calories} cal · P${+m.protein} C${+m.carbs} F${+m.fat}</small></div>
         <span class="tag" style="background:var(--${m.source})">${SOURCES[m.source]}</span>
         <span class="cost">${money(m.cost)}</span>
+        <button type="button" class="btn ghost small" data-edit="${m.id}">Edit</button>
         <button class="del" data-id="${m.id}" aria-label="Delete ${esc(m.name)}">&times;</button></div>`).join("")
         : `<div class="empty">Nothing logged yet.</div>`) + `</div>`;
   }
   $("days").innerHTML = html;
   $("days").querySelectorAll(".del").forEach(b => b.onclick = () => confirm("Delete this meal?") && removeMeal(b.dataset.id));
+  $("days").querySelectorAll("[data-edit]").forEach(b => b.onclick = () => startEdit(b.dataset.edit));
 }
+
+let editingId = null;
+
+function startEdit(id) {
+  const m = meals.find(x => x.id === id);
+  if (!m) return;
+  editingId = id;
+  $("name").value = m.name;
+  $("date").value = m.eaten_on;
+  $("type").value = m.meal_type;
+  $("source").value = m.source;
+  $("cost").value = m.cost;
+  $("cal").value = m.calories;
+  $("pro").value = m.protein;
+  $("carb").value = m.carbs;
+  $("fat").value = m.fat;
+  $("submitBtn").textContent = "Save changes";
+  $("cancelEdit").classList.remove("hidden");
+  setMsg($("mealMsg"), "Editing meal — change any field and save.");
+  $("mealForm").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function stopEdit() {
+  editingId = null;
+  $("mealForm").reset();
+  $("date").value = iso(new Date());
+  $("submitBtn").textContent = "Add meal";
+  $("cancelEdit").classList.add("hidden");
+  setMsg($("mealMsg"), "");
+}
+
 </script>
 </body>
 </html>
