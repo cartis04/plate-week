@@ -19,6 +19,7 @@ Original Claude Prompt:
 I want to build an app that allows you to track  the meals you are making/having in the week. It should track things like cost, nutritional value, and source of the meal (eating out, cooking at home, etc). The app should have user registration and login features (and log out) so that users can view and store their own information
 
 Netlify link: https://plate-week.netlify.app/
+Youtube Demo: https://youtu.be/UkKxqgArS0o
 
 Technology used: HTML, JS, Supabase, SQL, USDA API, Open Food Facts API, Netlify
 
